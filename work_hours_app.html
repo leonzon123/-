@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>工时记录助手</title>
+    
+    <!-- PWA配置 -->
+    <meta name="theme-color" content="#4285f4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="工时记录">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            background: #ffffff;
+            color: #333333;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* 扣子APP提示 - 移到右上角 */
+        .coze-hint {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(66, 133, 244, 0.9);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 9999;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .coze-hint:hover {
+            background: rgba(66, 133, 244, 1);
+            transform: scale(1.05);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .month-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .month-btn {
+            background: #f0f0f0;
+            border: none;
+            padding: 10px 20px;
+            font-size: 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #333;
+        }
+
+        .month-btn:active {
+            background: #e0e0e0;
+        }
+
+        .current-month {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 30px;
+        }
+
+        .weekday {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #666;
+            padding: 10px 0;
+        }
+
+        .day {
+            text-align: center;
+            padding: 10px 5px;
+            font-size: 24px;
+            font-weight: bold;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .day .day-number {
+            font-size: 24px;
+        }
+
+        .day .day-hours {
+            font-size: 12px;
+            margin-top: 4px;
+            color: #2196F3;
+            font-weight: normal;
+        }
+
+        .day:active {
+            background: #f5f5f5;
+        }
+
+        .day.has-record {
+            background: #e3f2fd;
+            border-color: #2196F3;
+            color: #1976D2;
+        }
+
+        .day.today {
+            border-color: #FF5722;
+            border-width: 3px;
+        }
+
+        .day.other-month {
+            color: #ccc;
+            background: #f9f9f9;
+        }
+
+        .day.empty {
+            border: none;
+            cursor: default;
+        }
+
+        .summary {
+            background: #f8f8f8;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .summary-title {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .summary-value {
+            font-size: 42px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .filter-section {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .filter-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .date-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .date-input-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .date-label {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .date-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            color: #333;
+        }
+
+        .filter-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 22px;
+            font-weight: bold;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .filter-btn:active {
+            background: #1976D2;
+        }
+
+        .clear-filter {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-top: 10px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* 记录弹窗样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            width: 95%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .modal-title {
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .modal-date {
+            font-size: 20px;
+            color: #666;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #f0f0f0;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .day-summary {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .day-summary-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1976D2;
+            margin-bottom: 8px;
+        }
+
+        .day-summary-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1976D2;
+        }
+
+        /* 时间段选择器样式 */
+        .time-period-section {
+            background: #f9f9f9;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .time-period-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .time-period-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            text-align: left;
+        }
+
+        .no-work-btn {
+            background: #9e9e9e;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .no-work-btn.active {
+            background: #757575;
+        }
+
+        .time-period-range {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        /* 滚轮选择器容器 */
+        .picker-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .picker {
+            flex: 1;
+            min-width: 60px;
+        }
+
+        .picker-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        /* 滚轮样式 */
+        .picker-scroll {
+            height: 150px;
+            overflow: hidden;
+            position: relative;
+            background: #fff;
+            border: 2px solid #2196F3;
+            border-radius: 8px;
+        }
+
+        .picker-wheel {
+            height: 100%;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            padding-top: 55px;
+            padding-bottom: 55px;
+        }
+
+        .picker-wheel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .picker-wheel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 8px;
+        }
+
+        .picker-wheel::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 8px;
+        }
+
+        .picker-item {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .picker-item:hover {
+            background: #e8f0fe;
+            color: #4285f4;
+        }
+
+        .picker-item.selected {
+            color: #1976D2;
+            font-size: 18px;
+            font-weight: bold;
+            background: #e3f2fd;
+        }
+
+        .picker-separator {
+            font-size: 18px;
+            font-weight: bold;
+            color: #666;
+            align-self: center;
+        }
+
+        .time-period-result {
+            font-size: 18px;
+            color: #2196F3;
+            font-weight: bold;
+            text-align: right;
+            margin-top: 10px;
+        }
+
+        .error-message {
+            color: #f44336;
+            font-size: 15px;
+            font-weight: bold;
+            text-align: right;
+            margin-top: 5px;
+            min-height: 22px;
+        }
+
+        /* 时间段按钮组 */
+        .period-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .period-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .period-btn-confirm {
+            background: #4caf50;
+            color: white;
+        }
+
+        .period-btn-confirm:hover {
+            background: #45a049;
+        }
+
+        .period-btn-reset {
+            background: #f44336;
+            color: white;
+        }
+
+        .period-btn-reset:hover {
+            background: #da190b;
+        }
+
+        /* 提示消息 */
+        .toast {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 20px;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            display: block;
+            animation: fadeInOut 2s ease-in-out;
+        }
+
+        .toast.error {
+            background: #f44336;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, 20px); }
+            20% { opacity: 1; transform: translate(-50%, 0); }
+            80% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
+
+        /* 选中高亮条 */
+        .picker-highlight {
+            position: absolute;
+            top: 55px;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: rgba(33, 150, 243, 0.1);
+            pointer-events: none;
+            border-top: 1px solid #2196F3;
+            border-bottom: 1px solid #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="month-selector">
+            <button class="month-btn" onclick="changeMonth(-1)">◀</button>
+            <div class="current-month" id="currentMonth">2026年2月</div>
+            <button class="month-btn" onclick="changeMonth(1)">▶</button>
+        </div>
+    </div>
+
+    <div class="calendar" id="calendar">
+        <div class="weekday">日</div>
+        <div class="weekday">一</div>
+        <div class="weekday">二</div>
+        <div class="weekday">三</div>
+        <div class="weekday">四</div>
+        <div class="weekday">五</div>
+        <div class="weekday">六</div>
+    </div>
+
+    <div class="summary">
+        <div class="summary-title" id="summaryTitle">本月累计</div>
+        <div class="summary-value" id="summaryValue">0 工时</div>
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-title">📅 统计筛选</div>
+        <div class="date-row">
+            <div class="date-input-wrapper">
+                <label class="date-label">开始日期</label>
+                <input type="date" class="date-input" id="startDate">
+            </div>
+            <div class="date-input-wrapper">
+                <label class="date-label">结束日期</label>
+                <input type="date" class="date-input" id="endDate">
+            </div>
+        </div>
+        <button class="filter-btn" onclick="filterRecords()">计算工时</button>
+        <button class="clear-filter" onclick="clearFilter()">显示本月</button>
+    </div>
+
+    <!-- 日期详情弹窗 -->
+    <div class="modal" id="recordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="back-btn" onclick="closeModal()">← 返回</button>
+                <div class="modal-title">工时记录</div>
+                <div class="modal-date" id="modalDate"></div>
+            </div>
+
+            <div class="day-summary">
+                <div class="day-summary-title">当日总工时</div>
+                <div class="day-summary-value" id="daySummaryValue">0 工时</div>
+            </div>
+
+            <!-- 上午时段 -->
+            <div class="time-period-section">
+                <div class="time-period-header">
+                    <div class="time-period-title">☀️ 上午时段</div>
+                    <button class="no-work-btn" id="morningNoWorkBtn" onclick="toggleNoWork('morning')">无工作</button>
+                </div>
+                <div class="time-period-range">范围：00:00 - 12:00</div>
+                <div class="picker-container" id="morningPickerContainer">
+                    <div class="picker">
+                        <div class="picker-label">开始小时</div>
+                        <div class="picker-scroll">
+                            <div class="picker-highlight"></div>
+                            <div class="picker-wheel" id="morningStartHourWheel"></div>
+                        </div>
+                    </div>
+                    <div class="picker">
+                        <div class="picker-label">开始分钟</div>
+                        <div class="picker-scroll">
+                            <div class="picker-highlight"></div>
+                            <div class="picker-wheel" id="morningStartMinWheel"></div>
+                        </div>
+                    </div>
+                    <span class="picker-separator">至</span>
+                    <div class="picker">
+                        <div class="picker-label">结束小时</div>
+                        <div class="picker-scroll">
+                            <div class="picker-highlight"></div>
+                            <div class="picker-wheel" id="morningEndHourWheel"></div>
+                        </div>
+                    </div>
+                    <div class="picker">
+                        <div class="picker-label">结束分钟</div>
+                        <div class="picker-scroll">
+                            <div class="picker-highlight"></div>
+                            <div class="picker-wheel" id="morningEndMinWheel"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="time-period-result" id="morningResult">0 工时</div>
+                <div class="error-message" id="morningError"></div>
+                <div class="period-buttons" id="morningButtons">
+                    <button class="period-btn period-btn-confirm" onclick="confirmMorning()">确定</button>
+                    <button class="period-btn period-btn-reset" onclick="resetMorning()">重置</button>
+                </div>
+            </div>
+
+            <!-- 下午时段 -->
+            <div class="time-period-section">
+                <div class="time-period-header">
+                    <div class="time-period-title">🌤️ 下午时段</div>
+                    <button class="no-work-btn" id="afternoonNoWorkBtn" onclick="toggleNoWork('afternoon')">无工作</button>
+                </div>
+                <div class="time-period-range">范围：12:00 - 24:00</div>
+                <div class="picker-container" id="afternoonPickerContainer">
+                    <div class="picker">
+                        <div class="picker-label">开始小时</div>
+                        <div class="picker-scroll">
+                            <div class="picker-highlight"></div>
+                            <div class="picker-wheel" id="afternoonStartHourWheel"></div>
+                        </div>
+                    </div>
+                    <div class="picker">
+                        <div class="picker-label">开始分钟</div>
+                        <div class="picker-scroll">
+                            <div class="picker-highlight"></div>
+                            <div class="picker-wheel" id="afternoonStartMinWheel"></div>
+                        </div>
+                    </div>
+                    <span class="picker-separator">至</span>
+                    <div class="picker">
+                        <div class="picker-label">结束小时</div>
+                        <div class="picker-scroll">
+                            <div class="picker-highlight"></div>
+                            <div class="picker-wheel" id="afternoonEndHourWheel"></div>
+                        </div>
+                    </div>
+                    <div class="picker">
+                        <div class="picker-label">结束分钟</div>
+                        <div class="picker-scroll">
+                            <div class="picker-highlight"></div>
+                            <div class="picker-wheel" id="afternoonEndMinWheel"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="time-period-result" id="afternoonResult">0 工时</div>
+                <div class="error-message" id="afternoonError"></div>
+                <div class="period-buttons" id="afternoonButtons">
+                    <button class="period-btn period-btn-confirm" onclick="confirmAfternoon()">确定</button>
+                    <button class="period-btn period-btn-reset" onclick="resetAfternoon()">重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div class="toast" id="toast">保存成功！</div>
+
+    <script>
+        // 数据存储
+        let workRecords = JSON.parse(localStorage.getItem('workRecords') || '{}');
+        let currentDate = new Date();
+        let selectedDate = null;
+        let filterMode = false;
+        let filterStart = null;
+        let filterEnd = null;
+
+        // 时间选择器状态
+        let morningStartHour = 8;
+        let morningStartMin = 0;
+        let morningEndHour = 12;
+        let morningEndMin = 0;
+        let morningConfirmed = false;
+        let morningNoWork = false;
+
+        let afternoonStartHour = 13;
+        let afternoonStartMin = 0;
+        let afternoonEndHour = 18;
+        let afternoonEndMin = 0;
+        let afternoonConfirmed = false;
+        let afternoonNoWork = false;
+
+        // 上午小时：0-11（12个选项）
+        const morningHours = [];
+        for (let h = 0; h < 12; h++) {
+            morningHours.push(h);
+        }
+
+        // 下午小时：12-23（12个选项）
+        const afternoonHours = [];
+        for (let h = 12; h < 24; h++) {
+            afternoonHours.push(h);
+        }
+
+        // 分钟：0-59（60个选项）
+        const minutes = [];
+        for (let m = 0; m < 60; m++) {
+            minutes.push(m);
+        }
+
+        // 初始化滚轮选择器
+        function initPicker(wheelId, values, onSelect) {
+            const wheel = document.getElementById(wheelId);
+            wheel.innerHTML = '';
+            
+            values.forEach((value, index) => {
+                const item = document.createElement('div');
+                item.className = 'picker-item';
+                item.textContent = String(value).padStart(2, '0');
+                item.dataset.value = value;
+                item.dataset.index = index;
+                item.onclick = () => {
+                    // 移除其他选中状态
+                    wheel.querySelectorAll('.picker-item').forEach(el => el.classList.remove('selected'));
+                    item.classList.add('selected');
+                    // 滚动到选中位置（自动对齐）
+                    item.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    onSelect(value);
+                };
+                wheel.appendChild(item);
+            });
+
+            // 添加滚动监听，实现自动吸附对齐
+            let scrollTimeout;
+            wheel.addEventListener('scroll', function() {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    const scrollPosition = wheel.scrollTop;
+                    const itemHeight = 40;
+                    const selectedIndex = Math.round(scrollPosition / itemHeight);
+                    
+                    // 计算应该滚动到的精确位置（自动对齐）
+                    const targetScrollTop = selectedIndex * itemHeight;
+                    
+                    // 平滑滚动到对齐位置
+                    wheel.scrollTo({
+                        top: targetScrollTop,
+                        behavior: 'smooth'
+                    });
+                    
+                    const items = wheel.querySelectorAll('.picker-item');
+                    items.forEach((item, index) => {
+                        if (index === selectedIndex && index < items.length) {
+                            item.classList.add('selected');
+                            if (item.dataset.value !== undefined) {
+                                onSelect(parseInt(item.dataset.value));
+                            }
+                        } else {
+                            item.classList.remove('selected');
+                        }
+                    });
+                }, 150);
+            });
+        }
+
+        // 设置滚轮选中项
+        function setPickerSelected(wheelId, value) {
+            const wheel = document.getElementById(wheelId);
+            const items = wheel.querySelectorAll('.picker-item');
+            items.forEach(item => {
+                if (parseInt(item.dataset.value) === value) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化上午滚轮
+            initPicker('morningStartHourWheel', morningHours, (value) => {
+                morningStartHour = value;
+                morningConfirmed = false;
+                updateMorningResult();
+            });
+            initPicker('morningStartMinWheel', minutes, (value) => {
+                morningStartMin = value;
+                morningConfirmed = false;
+                updateMorningResult();
+            });
+            initPicker('morningEndHourWheel', morningHours, (value) => {
+                morningEndHour = value;
+                morningConfirmed = false;
+                updateMorningResult();
+            });
+            initPicker('morningEndMinWheel', minutes, (value) => {
+                morningEndMin = value;
+                morningConfirmed = false;
+                updateMorningResult();
+            });
+            
+            // 初始化下午滚轮
+            initPicker('afternoonStartHourWheel', afternoonHours, (value) => {
+                afternoonStartHour = value;
+                afternoonConfirmed = false;
+                updateAfternoonResult();
+            });
+            initPicker('afternoonStartMinWheel', minutes, (value) => {
+                afternoonStartMin = value;
+                afternoonConfirmed = false;
+                updateAfternoonResult();
+            });
+            initPicker('afternoonEndHourWheel', afternoonHours, (value) => {
+                afternoonEndHour = value;
+                afternoonConfirmed = false;
+                updateAfternoonResult();
+            });
+            initPicker('afternoonEndMinWheel', minutes, (value) => {
+                afternoonEndMin = value;
+                afternoonConfirmed = false;
+                updateAfternoonResult();
+            });
+            
+            renderCalendar();
+            updateSummary();
+            
+            // 设置今天的日期作为筛选默认值
+            const today = new Date();
+            const todayStr = formatDate(today);
+            document.getElementById('startDate').value = getMonthStart(today);
+            document.getElementById('endDate').value = todayStr;
+        });
+
+        // 切换"无工作"状态
+        function toggleNoWork(period) {
+            if (period === 'morning') {
+                morningNoWork = !morningNoWork;
+                const btn = document.getElementById('morningNoWorkBtn');
+                const pickerContainer = document.getElementById('morningPickerContainer');
+                const buttons = document.getElementById('morningButtons');
+                
+                if (morningNoWork) {
+                    btn.classList.add('active');
+                    btn.textContent = '已无工作';
+                    pickerContainer.style.display = 'none';
+                    buttons.style.display = 'none';
+                    document.getElementById('morningResult').textContent = '0 工时';
+                    document.getElementById('morningError').textContent = '';
+                    // 立即更新总工时
+                    updateDayTotal();
+                    // 保存无工作状态
+                    saveMorningNoWork();
+                } else {
+                    btn.classList.remove('active');
+                    btn.textContent = '无工作';
+                    pickerContainer.style.display = 'flex';
+                    buttons.style.display = 'flex';
+                    morningNoWork = false;
+                    // 恢复时间选择
+                    resetMorning();
+                }
+            } else {
+                afternoonNoWork = !afternoonNoWork;
+                const btn = document.getElementById('afternoonNoWorkBtn');
+                const pickerContainer = document.getElementById('afternoonPickerContainer');
+                const buttons = document.getElementById('afternoonButtons');
+                
+                if (afternoonNoWork) {
+                    btn.classList.add('active');
+                    btn.textContent = '已无工作';
+                    pickerContainer.style.display = 'none';
+                    buttons.style.display = 'none';
+                    document.getElementById('afternoonResult').textContent = '0 工时';
+                    document.getElementById('afternoonError').textContent = '';
+                    // 立即更新总工时
+                    updateDayTotal();
+                    // 保存无工作状态
+                    saveAfternoonNoWork();
+                } else {
+                    btn.classList.remove('active');
+                    btn.textContent = '无工作';
+                    pickerContainer.style.display = 'flex';
+                    buttons.style.display = 'flex';
+                    afternoonNoWork = false;
+                    // 恢复时间选择
+                    resetAfternoon();
+                }
+            }
+        }
+
+        // 保存上午无工作状态
+        function saveMorningNoWork() {
+            if (!workRecords[selectedDate]) {
+                workRecords[selectedDate] = {};
+            }
+            workRecords[selectedDate].morningNoWork = true;
+            workRecords[selectedDate].morningHours = 0;
+            workRecords[selectedDate].morningConfirmed = true;
+            saveData();
+            renderCalendar();
+            updateSummary();
+        }
+
+        // 保存下午无工作状态
+        function saveAfternoonNoWork() {
+            if (!workRecords[selectedDate]) {
+                workRecords[selectedDate] = {};
+            }
+            workRecords[selectedDate].afternoonNoWork = true;
+            workRecords[selectedDate].afternoonHours = 0;
+            workRecords[selectedDate].afternoonConfirmed = true;
+            saveData();
+            renderCalendar();
+            updateSummary();
+        }
+
+        // 确认上午时段
+        function confirmMorning() {
+            morningConfirmed = true;
+            morningNoWork = false;
+            saveMorningRecord();
+            updateDayTotal();
+            showToast('上午时段已确定');
+        }
+
+        // 重置上午时段
+        function resetMorning() {
+            morningConfirmed = false;
+            morningNoWork = false;
+            morningStartHour = 8;
+            morningStartMin = 0;
+            morningEndHour = 12;
+            morningEndMin = 0;
+            
+            // 清除无工作状态
+            const btn = document.getElementById('morningNoWorkBtn');
+            btn.classList.remove('active');
+            btn.textContent = '无工作';
+            
+            // 显示选择器和按钮
+            document.getElementById('morningPickerContainer').style.display = 'flex';
+            document.getElementById('morningButtons').style.display = 'flex';
+            
+            setPickerSelected('morningStartHourWheel', 8);
+            setPickerSelected('morningStartMinWheel', 0);
+            setPickerSelected('morningEndHourWheel', 12);
+            setPickerSelected('morningEndMinWheel', 0);
+            document.getElementById('morningError').textContent = '';
+            
+            // 重置工时显示为0
+            document.getElementById('morningResult').textContent = '0 工时';
+            
+            updateDayTotal();
+        }
+
+        // 确认下午时段
+        function confirmAfternoon() {
+            afternoonConfirmed = true;
+            afternoonNoWork = false;
+            saveAfternoonRecord();
+            updateDayTotal();
+            showToast('下午时段已确定');
+        }
+
+        // 重置下午时段
+        function resetAfternoon() {
+            afternoonConfirmed = false;
+            afternoonNoWork = false;
+            afternoonStartHour = 13;
+            afternoonStartMin = 0;
+            afternoonEndHour = 18;
+            afternoonEndMin = 0;
+            
+            // 清除无工作状态
+            const btn = document.getElementById('afternoonNoWorkBtn');
+            btn.classList.remove('active');
+            btn.textContent = '无工作';
+            
+            // 显示选择器和按钮
+            document.getElementById('afternoonPickerContainer').style.display = 'flex';
+            document.getElementById('afternoonButtons').style.display = 'flex';
+            
+            setPickerSelected('afternoonStartHourWheel', 13);
+            setPickerSelected('afternoonStartMinWheel', 0);
+            setPickerSelected('afternoonEndHourWheel', 18);
+            setPickerSelected('afternoonEndMinWheel', 0);
+            document.getElementById('afternoonError').textContent = '';
+            
+            // 重置工时显示为0
+            document.getElementById('afternoonResult').textContent = '0 工时';
+            
+            updateDayTotal();
+        }
+
+        // 计算工时（带逻辑校验）
+        function calculateHours(startH, startM, endH, endM) {
+            let startMinutes = startH * 60 + startM;
+            let endMinutes = endH * 60 + endM;
+            
+            // 逻辑校验：结束时间必须晚于开始时间
+            if (endMinutes <= startMinutes) {
+                return null; // 返回null表示逻辑错误
+            }
+            
+            let hours = (endMinutes - startMinutes) / 60;
+            // 四舍五入到0.5的倍数
+            hours = Math.round(hours * 2) / 2;
+            return hours;
+        }
+
+        // 更新上午结果
+        function updateMorningResult() {
+            // 如果是无工作状态，不计算
+            if (morningNoWork) {
+                document.getElementById('morningResult').textContent = '0 工时';
+                updateDayTotal();
+                return;
+            }
+            
+            const hours = calculateHours(morningStartHour, morningStartMin, morningEndHour, morningEndMin);
+            const errorDiv = document.getElementById('morningError');
+            const resultDiv = document.getElementById('morningResult');
+            
+            if (hours === null) {
+                errorDiv.textContent = '结束时间必须晚于开始时间';
+                resultDiv.textContent = '0 工时';
+            } else {
+                errorDiv.textContent = '';
+                resultDiv.textContent = hours + ' 工时';
+            }
+            
+            updateDayTotal();
+        }
+
+        // 更新下午结果
+        function updateAfternoonResult() {
+            // 如果是无工作状态，不计算
+            if (afternoonNoWork) {
+                document.getElementById('afternoonResult').textContent = '0 工时';
+                updateDayTotal();
+                return;
+            }
+            
+            const hours = calculateHours(afternoonStartHour, afternoonStartMin, afternoonEndHour, afternoonEndMin);
+            const errorDiv = document.getElementById('afternoonError');
+            const resultDiv = document.getElementById('afternoonResult');
+            
+            if (hours === null) {
+                errorDiv.textContent = '结束时间必须晚于开始时间';
+                resultDiv.textContent = '0 工时';
+            } else {
+                errorDiv.textContent = '';
+                resultDiv.textContent = hours + ' 工时';
+            }
+            
+            updateDayTotal();
+        }
+
+        // 保存上午记录
+        function saveMorningRecord() {
+            if (!workRecords[selectedDate]) {
+                workRecords[selectedDate] = {};
+            }
+            
+            const hours = calculateHours(morningStartHour, morningStartMin, morningEndHour, morningEndMin);
+            
+            workRecords[selectedDate].morningStartHour = morningStartHour;
+            workRecords[selectedDate].morningStartMin = morningStartMin;
+            workRecords[selectedDate].morningEndHour = morningEndHour;
+            workRecords[selectedDate].morningEndMin = morningEndMin;
+            workRecords[selectedDate].morningHours = hours || 0;
+            workRecords[selectedDate].morningConfirmed = true;
+            workRecords[selectedDate].morningNoWork = false;
+            
+            saveData();
+            renderCalendar();
+            updateSummary();
+        }
+
+        // 保存下午记录
+        function saveAfternoonRecord() {
+            if (!workRecords[selectedDate]) {
+                workRecords[selectedDate] = {};
+            }
+            
+            const hours = calculateHours(afternoonStartHour, afternoonStartMin, afternoonEndHour, afternoonEndMin);
+            
+            workRecords[selectedDate].afternoonStartHour = afternoonStartHour;
+            workRecords[selectedDate].afternoonStartMin = afternoonStartMin;
+            workRecords[selectedDate].afternoonEndHour = afternoonEndHour;
+            workRecords[selectedDate].afternoonEndMin = afternoonEndMin;
+            workRecords[selectedDate].afternoonHours = hours || 0;
+            workRecords[selectedDate].afternoonConfirmed = true;
+            workRecords[selectedDate].afternoonNoWork = false;
+            
+            saveData();
+            renderCalendar();
+            updateSummary();
+        }
+
+        // 更新当日总工时
+        function updateDayTotal() {
+            let morningHours = 0;
+            let afternoonHours = 0;
+            
+            // 计算上午工时
+            if (morningNoWork) {
+                // 无工作状态，工时为0
+                morningHours = 0;
+            } else if (morningConfirmed) {
+                // 已确认状态，使用确认的工时
+                const morningCalc = calculateHours(morningStartHour, morningStartMin, morningEndHour, morningEndMin);
+                if (morningCalc !== null) {
+                    morningHours = morningCalc;
+                } else {
+                    morningHours = 0;
+                }
+            } else {
+                // 未确认状态，工时为0
+                morningHours = 0;
+            }
+            
+            // 计算下午工时
+            if (afternoonNoWork) {
+                // 无工作状态，工时为0
+                afternoonHours = 0;
+            } else if (afternoonConfirmed) {
+                // 已确认状态，使用确认的工时
+                const afternoonCalc = calculateHours(afternoonStartHour, afternoonStartMin, afternoonEndHour, afternoonEndMin);
+                if (afternoonCalc !== null) {
+                    afternoonHours = afternoonCalc;
+                } else {
+                    afternoonHours = 0;
+                }
+            } else {
+                // 未确认状态，工时为0
+                afternoonHours = 0;
+            }
+            
+            const total = morningHours + afternoonHours;
+            document.getElementById('daySummaryValue').textContent = total + ' 工时';
+        }
+
+        // 渲染日历
+        function renderCalendar() {
+            const calendar = document.getElementById('calendar');
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            // 更新月份显示
+            document.getElementById('currentMonth').textContent = `${year}年${month + 1}月`;
+            
+            // 清除旧的日期格子（保留星期表头）
+            while (calendar.children.length > 7) {
+                calendar.removeChild(calendar.lastChild);
+            }
+            
+            // 获取当月第一天是星期几
+            const firstDay = new Date(year, month, 1).getDay();
+            
+            // 获取当月总天数
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // 获取上月总天数
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+            
+            // 获取今天的日期
+            const today = new Date();
+            const todayStr = formatDate(today);
+            
+            // 填充上月的日期
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day other-month';
+                const dayNum = daysInPrevMonth - i;
+                dayDiv.innerHTML = `<span class="day-number">${dayNum}</span>`;
+                calendar.appendChild(dayDiv);
+            }
+            
+            // 填充当月的日期
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayDiv = document.createElement('div');
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                dayDiv.className = 'day';
+                
+                // 检查是否有记录
+                let dayTotal = 0;
+                if (workRecords[dateStr]) {
+                    let morning = workRecords[dateStr].morningHours || 0;
+                    let afternoon = workRecords[dateStr].afternoonHours || 0;
+                    dayTotal = morning + afternoon;
+                    if (dayTotal > 0) {
+                        dayDiv.classList.add('has-record');
+                    }
+                }
+                
+                // 检查是否是今天
+                if (dateStr === todayStr) {
+                    dayDiv.classList.add('today');
+                }
+
+                // 显示日期和工时
+                const hoursText = dayTotal > 0 ? `<span class="day-hours">${dayTotal}工时</span>` : '';
+                dayDiv.innerHTML = `<span class="day-number">${day}</span>${hoursText}`;
+                
+                dayDiv.onclick = () => openModal(dateStr);
+                calendar.appendChild(dayDiv);
+            }
+            
+            // 填充下月的日期（补齐6行）
+            const totalCells = firstDay + daysInMonth;
+            const remainingCells = 42 - totalCells;
+            
+            if (remainingCells > 0 && remainingCells < 7) {
+                for (let i = 1; i <= remainingCells; i++) {
+                    const dayDiv = document.createElement('div');
+                    dayDiv.className = 'day other-month';
+                    dayDiv.innerHTML = `<span class="day-number">${i}</span>`;
+                    calendar.appendChild(dayDiv);
+                }
+            }
+        }
+
+        // 切换月份
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+            if (!filterMode) {
+                updateSummary();
+            }
+        }
+
+        // 更新统计
+        function updateSummary() {
+            let total = 0;
+            let title = '本月累计';
+            
+            if (filterMode && filterStart && filterEnd) {
+                title = `筛选日期累计`;
+                const start = new Date(filterStart);
+                const end = new Date(filterEnd);
+                
+                for (let date in workRecords) {
+                    const d = new Date(date);
+                    if (d >= start && d <= end) {
+                        if (workRecords[date]) {
+                            let morning = workRecords[date].morningHours || 0;
+                            let afternoon = workRecords[date].afternoonHours || 0;
+                            total += morning + afternoon;
+                        }
+                    }
+                }
+            } else {
+                // 计算本月累计
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                
+                for (let date in workRecords) {
+                    const d = new Date(date);
+                    if (d.getFullYear() === year && d.getMonth() === month) {
+                        if (workRecords[date]) {
+                            let morning = workRecords[date].morningHours || 0;
+                            let afternoon = workRecords[date].afternoonHours || 0;
+                            total += morning + afternoon;
+                        }
+                    }
+                }
+            }
+            
+            // 四舍五入到0.5的倍数
+            total = Math.round(total * 2) / 2;
+            document.getElementById('summaryTitle').textContent = title;
+            document.getElementById('summaryValue').textContent = total + ' 工时';
+        }
+
+        // 打开日期详情弹窗
+        function openModal(dateStr) {
+            selectedDate = dateStr;
+            const date = new Date(dateStr);
+            document.getElementById('modalDate').textContent = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+            
+            // 加载已保存的记录
+            const record = workRecords[selectedDate];
+            
+            // 上午时段 - 默认0工时，未确认状态
+            if (record && (record.morningConfirmed || record.morningNoWork)) {
+                if (record.morningNoWork) {
+                    morningNoWork = true;
+                    morningConfirmed = true;
+                    const btn = document.getElementById('morningNoWorkBtn');
+                    btn.classList.add('active');
+                    btn.textContent = '已无工作';
+                    document.getElementById('morningPickerContainer').style.display = 'none';
+                    document.getElementById('morningButtons').style.display = 'none';
+                    document.getElementById('morningResult').textContent = '0 工时';
+                    document.getElementById('morningError').textContent = '';
+                } else if (record.morningConfirmed) {
+                    morningStartHour = record.morningStartHour || 8;
+                    morningStartMin = record.morningStartMin || 0;
+                    morningEndHour = record.morningEndHour || 12;
+                    morningEndMin = record.morningEndMin || 0;
+                    morningConfirmed = true;
+                    morningNoWork = false;
+                    const btn = document.getElementById('morningNoWorkBtn');
+                    btn.classList.remove('active');
+                    btn.textContent = '无工作';
+                    document.getElementById('morningPickerContainer').style.display = 'flex';
+                    document.getElementById('morningButtons').style.display = 'flex';
+                    // 显示已确认的工时
+                    const morningHours = calculateHours(morningStartHour, morningStartMin, morningEndHour, morningEndMin);
+                    document.getElementById('morningResult').textContent = morningHours + ' 工时';
+                }
+            } else {
+                // 默认状态：0工时，未确认，显示"待选择"
+                morningStartHour = 8;
+                morningStartMin = 0;
+                morningEndHour = 12;
+                morningEndMin = 0;
+                morningConfirmed = false;
+                morningNoWork = false;
+                const btn = document.getElementById('morningNoWorkBtn');
+                btn.classList.remove('active');
+                btn.textContent = '无工作';
+                document.getElementById('morningPickerContainer').style.display = 'flex';
+                document.getElementById('morningButtons').style.display = 'flex';
+                document.getElementById('morningResult').textContent = '待选择';
+            }
+            
+            // 下午时段 - 默认0工时，未确认状态
+            if (record && (record.afternoonConfirmed || record.afternoonNoWork)) {
+                if (record.afternoonNoWork) {
+                    afternoonNoWork = true;
+                    afternoonConfirmed = true;
+                    const btn = document.getElementById('afternoonNoWorkBtn');
+                    btn.classList.add('active');
+                    btn.textContent = '已无工作';
+                    document.getElementById('afternoonPickerContainer').style.display = 'none';
+                    document.getElementById('afternoonButtons').style.display = 'none';
+                    document.getElementById('afternoonResult').textContent = '0 工时';
+                    document.getElementById('afternoonError').textContent = '';
+                } else if (record.afternoonConfirmed) {
+                    afternoonStartHour = record.afternoonStartHour || 13;
+                    afternoonStartMin = record.afternoonStartMin || 0;
+                    afternoonEndHour = record.afternoonEndHour || 18;
+                    afternoonEndMin = record.afternoonEndMin || 0;
+                    afternoonConfirmed = true;
+                    afternoonNoWork = false;
+                    const btn = document.getElementById('afternoonNoWorkBtn');
+                    btn.classList.remove('active');
+                    btn.textContent = '无工作';
+                    document.getElementById('afternoonPickerContainer').style.display = 'flex';
+                    document.getElementById('afternoonButtons').style.display = 'flex';
+                    // 显示已确认的工时
+                    const afternoonHours = calculateHours(afternoonStartHour, afternoonStartMin, afternoonEndHour, afternoonEndMin);
+                    document.getElementById('afternoonResult').textContent = afternoonHours + ' 工时';
+                }
+            } else {
+                // 默认状态：0工时，未确认，显示"待选择"
+                afternoonStartHour = 13;
+                afternoonStartMin = 0;
+                afternoonEndHour = 18;
+                afternoonEndMin = 0;
+                afternoonConfirmed = false;
+                afternoonNoWork = false;
+                const btn = document.getElementById('afternoonNoWorkBtn');
+                btn.classList.remove('active');
+                btn.textContent = '无工作';
+                document.getElementById('afternoonPickerContainer').style.display = 'flex';
+                document.getElementById('afternoonButtons').style.display = 'flex';
+                document.getElementById('afternoonResult').textContent = '待选择';
+            }
+            
+            // 设置滚轮选中值（只在非无工作状态下）
+            if (!morningNoWork) {
+                setPickerSelected('morningStartHourWheel', morningStartHour);
+                setPickerSelected('morningStartMinWheel', morningStartMin);
+                setPickerSelected('morningEndHourWheel', morningEndHour);
+                setPickerSelected('morningEndMinWheel', morningEndMin);
+            }
+            if (!afternoonNoWork) {
+                setPickerSelected('afternoonStartHourWheel', afternoonStartHour);
+                setPickerSelected('afternoonStartMinWheel', afternoonStartMin);
+                setPickerSelected('afternoonEndHourWheel', afternoonEndHour);
+                setPickerSelected('afternoonEndMinWheel', afternoonEndMin);
+            }
+            
+            // 清空错误提示
+            document.getElementById('morningError').textContent = '';
+            document.getElementById('afternoonError').textContent = '';
+            
+            // 重新更新当日总工时
+            updateDayTotal();
+            document.getElementById('recordModal').classList.add('show');
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('recordModal').classList.remove('show');
+            selectedDate = null;
+        }
+
+        // 保存数据
+        function saveData() {
+            localStorage.setItem('workRecords', JSON.stringify(workRecords));
+        }
+
+        // 筛选记录
+        function filterRecords() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                showToast('请选择开始和结束日期', true);
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                showToast('开始日期不能晚于结束日期', true);
+                return;
+            }
+            
+            filterMode = true;
+            filterStart = startDate;
+            filterEnd = endDate;
+            updateSummary();
+            showToast('筛选完成！');
+        }
+
+        // 清除筛选
+        function clearFilter() {
+            filterMode = false;
+            filterStart = null;
+            filterEnd = null;
+            document.getElementById('startDate').value = getMonthStart(currentDate);
+            document.getElementById('endDate').value = formatDate(new Date());
+            updateSummary();
+        }
+
+        // 显示提示
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = isError ? 'toast error show' : 'toast show';
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // 格式化日期
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // 获取本月第一天
+        function getMonthStart(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}-01`;
+        }
+    </script>
+    
+    <!-- PWA Service Worker 注册 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
