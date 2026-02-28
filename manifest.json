@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "工时记录",
   "short_name": "工时记录",
   "description": "方便的工时记录工具",
-  "start_url": "./work_hours_app.html",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4285f4",
